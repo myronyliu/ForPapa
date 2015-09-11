@@ -32,7 +32,7 @@ void renderScene(void)
 bool _tracked;
 int _x;
 int _y;
-float _step = 1.0f;
+float _step = 10.0f;
 
 void motionFunc(int x, int y)
 {
@@ -180,10 +180,11 @@ int main(int argc, char **argv)
     shaderManager = new Managers::ShaderManager;
     shaderManager->CreateProgram("shader", "Shaders/VertexShader.glsl", "Shaders/FragmentShader.glsl");
 
-    elevationMap = new ElevationMap(64, 64, 1.0f, 1.0f);
+    elevationMap = new ElevationMap(1600, 1386, 1.0f, 1.0f);
     elevationMap->_aspect = (float)WINDOW_W / WINDOW_H;
-    elevationMap->_shader = Managers::ShaderManager::GetShader("shader");
-    elevationMap->randomize(0.0f, 8.0f);
+	elevationMap->_shader = Managers::ShaderManager::GetShader("shader");
+	elevationMap->load("pasadena.dem");
+    //elevationMap->randomize(0.0f, 8.0f);
 
     glutMouseFunc(mouseFunc);
     glutPassiveMotionFunc(passiveMotionFunc);

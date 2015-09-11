@@ -1,17 +1,60 @@
 #include "ElevationMap.h"
 
+bool ElevationMap::load(const char* fileName)
+{
+	FILE* demFile;
+	fopen_s(&demFile, fileName, "r");
+
+	int n;
+
+	_ny = 1386;
+	int nx = 0;
+
+	int rowStart = 0x13c00;
+
+	do
+	{
+		fseek(demFile, rowStart, SEEK_SET);
+		fseek(demFile, 0xc, SEEK_CUR);
+		fscanf_s(demFile, "%d", &n);
+		fseek(demFile, 126, SEEK_CUR);
+		if (n >= _ny)
+		{
+			for (int i = 0; i < _ny; i++)
+			{
+				fscanf_s(demFile, "%d", &n);
+				_h[_ny*nx + i] = (float)n / 30;
+			}
+			nx++;
+		}
+		else
+		{
+			break;
+		}
+		rowStart += 0x2400;
+	}
+	while (true);
+
+	_nx = nx;
+
+	updateBuffers();
+
+	return true;
+} // TODO: make column major again
+
 ElevationMap::ElevationMap(int nx, int ny, float dx, float dy) :
 _nx(std::max({ 2, nx })), _ny(std::max({ 2, ny })), _dx(fabs(dx)), _dy(fabs(dy)),
-_theta(-M_PI / 6), _phi(0.0f),
+_theta(-M_PI / 2), _phi(0.0f),
 _camType(PERSPECTIVE), _fovy(M_PI / 4), _aspect(4.0f / 3),
-_near(0.125f), _far(1024.0f),
+_near(10.0f), _far(100000.0f),
 _left(-400.0f), _right(400.0f), _bottom(-300.0f), _top(300.0f),
 _lightDir(glm::vec3(0, 1, 0)), _lightRad(0.5f*glm::vec3(1, 1, 1))
 {
     _h = new float[_nx*_ny];
+	//_h.resize(_nx*_ny);
 
-    float s = (float)sqrt(_nx*_nx + _ny*_ny) / 2;
-    _camX = glm::vec3(_dy*_ny / 2, s, _dx*_nx*1.7f);
+    float s = (float)sqrt(_dx*_dx*_nx*_nx + _dy*_dy*_ny*_ny);
+	_camX = glm::vec3(_dy*_ny / 2, s, _dx*_nx);
 
     glGenVertexArrays(1, &_VAO);
     glGenBuffers(1, &_pVBO);
@@ -36,7 +79,7 @@ void ElevationMap::randomize(float hMin, float hMax)
         for (unsigned int j = 0; j < _ny; j++)
         {
             float alpha = (float)rand() / RAND_MAX;
-            _h[_nx*i + j] = alpha*hMin + (1.0f - alpha)*hMax;
+            _h[_ny*i + j] = alpha*hMin + (1.0f - alpha)*hMax;
         }
     }
     updateBuffers();
@@ -98,7 +141,7 @@ void ElevationMap::updateBuffers(int paddingIn) // call this function whenever y
         h = new float[nx*ny];
 
         int counter = 0;
-        for (unsigned int i = 0; i < padding*nx; i++, counter++)
+        for (unsigned int j = 0; j < padding*ny; j++, counter++)
         {
             h[counter] = 0;
         }
@@ -110,17 +153,18 @@ void ElevationMap::updateBuffers(int paddingIn) // call this function whenever y
             }
             for (unsigned int j = 0; j < _ny; j++, counter++)
             {
-                h[counter] = _h[_nx*i + j];
+                h[counter] = _h[_ny*i + j];
             }
             for (unsigned int j = 0; j < padding; j++, counter++)
             {
                 h[counter] = 0;
             }
         }
-        for (unsigned int i = 0; i < padding*nx; i++, counter++)
+        for (unsigned int j = 0; j < padding*ny; j++, counter++)
         {
             h[counter] = 0;
         }
+		_t += (float)padding * glm::vec3(-_dy, 0, -_dx);
     }
 
     unsigned int nVerts = nx*ny;
@@ -141,7 +185,7 @@ void ElevationMap::updateBuffers(int paddingIn) // call this function whenever y
         {
             float y = j*_dy;
 
-            positions[i + nx*j] = glm::vec3(y, h[i + nx*j], x);
+			positions[ny*i + j] = glm::vec3(y, h[ny*i + j], x);
         }
     }
 
@@ -160,19 +204,19 @@ void ElevationMap::updateBuffers(int paddingIn) // call this function whenever y
     };
 
     for (unsigned int i = 0; i < nx; i++) // COMPUTE NORMALS
-    {
-        unsigned int iM = clamp(0, i - 1, nx);
-        unsigned int iP = clamp(0, i + 1, nx);
+	{
+		unsigned int iM = clamp(0, i - 1, nx - 1);
+		unsigned int iP = clamp(0, i + 1, nx - 1);
 
-        for (unsigned int j = 0; j < ny; j++)
-        {
-            unsigned int jM = clamp(0, j - 1, ny);
-            unsigned int jP = clamp(0, j + 1, ny);
+		for (unsigned int j = 0; j < ny; j++)
+		{
+			unsigned int jM = clamp(0, j - 1, ny - 1);
+			unsigned int jP = clamp(0, j + 1, ny - 1);
 
-            glm::vec3 gx = positions[iP + nx*j] - positions[iM + nx*j];
-            glm::vec3 gy = positions[i + nx*jP] - positions[i + nx*jM];
+			glm::vec3 gx = positions[ny*iP + j] - positions[ny*iM + j];
+			glm::vec3 gy = positions[ny*i + jP] - positions[ny*i + jM];
 
-            normals[i + nx*j] = glm::normalize(glm::cross(gx, gy));
+            normals[ny*i + j] = glm::normalize(glm::cross(gx, gy));
         }
     }
 
@@ -180,12 +224,12 @@ void ElevationMap::updateBuffers(int paddingIn) // call this function whenever y
     {
         for (unsigned int j = 0; j < yDivs; j++)
         {
-            unsigned int q = xDivs*i + j;
+            unsigned int q = yDivs*i + j;
 
-            unsigned int v00 = i + nx*j;
-            unsigned int v10 = (i + 1) + nx*j;
-            unsigned int v11 = (i + 1) + nx*(j + 1);
-            unsigned int v01 = i + nx*(j + 1);
+            unsigned int v00 = ny*i + j;
+            unsigned int v10 = ny*(i + 1) + j;
+            unsigned int v11 = ny*(i + 1) + (j + 1);
+            unsigned int v01 = ny*i + (j + 1);
 
             indices[2 * q + 0] = glm::ivec3(v00, v10, v11);
             indices[2 * q + 1] = glm::ivec3(v11, v01, v00);
