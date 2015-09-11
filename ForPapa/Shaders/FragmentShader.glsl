@@ -1,4 +1,4 @@
-#version 400 core
+#version 420 core
 
 flat in vec3 radiance;
 out vec4 fragColor;

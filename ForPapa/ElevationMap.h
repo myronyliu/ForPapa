@@ -25,7 +25,7 @@ public:
     //// BEGIN MEMBER FUNCTIONS ////
     ////////////////////////////////
 
-    ElevationMap(int nx, int ny, float dx, float dy);
+	ElevationMap(int nx, int ny, float dx = 10.0f, float dy = 10.0f);
     ~ElevationMap();
 
     bool load(const char* fileName); // I don't know the file format, so you can fill this in

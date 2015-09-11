@@ -4,7 +4,7 @@
 
 #define WINDOW_X 64
 #define WINDOW_Y 64
-#define WINDOW_W 800
+#define WINDOW_W 1000
 #define WINDOW_H 600
 
 Managers::ShaderManager* shaderManager;
@@ -156,10 +156,21 @@ int main(int argc, char **argv)
     glutSetCursor(GLUT_CURSOR_NONE);
 
     glewInit();
-    if (glewIsSupported("GL_VERSION_4_0"))
-        std::cout << " GLEW Version is 4.0\n ";
-    else
-        std::cout << "GLEW 4.0 not supported\n ";
+	for (auto version :
+	{
+		"GL_VERSION_4_4", "GL_VERSION_4_3", "GL_VERSION_4_2", "GL_VERSION_4_1", "GL_VERSION_4_0",
+		"GL_VERSION_3_3", "GL_VERSION_3_2", "GL_VERSION_3_1", "GL_VERSION_3_0",
+		"GL_VERSION_2_1", "GL_VERSION_2_0"
+	})
+	{
+		if (glewIsSupported(version))
+		{
+			std::cout << "GLEW version is: " << version << std::endl;
+			break;
+		}
+	}
+
+	std::cout << "GLSL version is: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
     glEnable(GL_DEPTH_TEST);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

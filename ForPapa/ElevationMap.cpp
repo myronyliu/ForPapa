@@ -141,7 +141,7 @@ void ElevationMap::updateBuffers(int paddingIn) // call this function whenever y
         {
             float y = j*_dy;
 
-            positions[nx*i + j] = glm::vec3(y, h[nx*i + j], x);
+            positions[i + nx*j] = glm::vec3(y, h[i + nx*j], x);
         }
     }
 
@@ -169,10 +169,10 @@ void ElevationMap::updateBuffers(int paddingIn) // call this function whenever y
             unsigned int jM = clamp(0, j - 1, ny);
             unsigned int jP = clamp(0, j + 1, ny);
 
-            glm::vec3 gx = positions[nx*iP + j] - positions[nx*iM + j];
-            glm::vec3 gy = positions[nx*i + jP] - positions[nx*i + jM];
+            glm::vec3 gx = positions[iP + nx*j] - positions[iM + nx*j];
+            glm::vec3 gy = positions[i + nx*jP] - positions[i + nx*jM];
 
-            normals[nx*i + j] = glm::normalize(glm::cross(gx, gy));
+            normals[i + nx*j] = glm::normalize(glm::cross(gx, gy));
         }
     }
 
@@ -182,10 +182,10 @@ void ElevationMap::updateBuffers(int paddingIn) // call this function whenever y
         {
             unsigned int q = xDivs*i + j;
 
-            unsigned int v00 = nx*i + j;
-            unsigned int v10 = nx*(i + 1) + j;
-            unsigned int v11 = nx*(i + 1) + (j + 1);
-            unsigned int v01 = nx*i + (j + 1);
+            unsigned int v00 = i + nx*j;
+            unsigned int v10 = (i + 1) + nx*j;
+            unsigned int v11 = (i + 1) + nx*(j + 1);
+            unsigned int v01 = i + nx*(j + 1);
 
             indices[2 * q + 0] = glm::ivec3(v00, v10, v11);
             indices[2 * q + 1] = glm::ivec3(v11, v01, v00);
